@@ -18,7 +18,7 @@ spec:
       serviceAccountName: kopfexample-account
       containers:
       - name: the-only-one
-        image: gabrielgomezdelatorre/kopf-operator:1.0.10
+        image: gabrielgomezdelatorre/kopf-operator:1.0.23
 
 ---
 apiVersion: v1
