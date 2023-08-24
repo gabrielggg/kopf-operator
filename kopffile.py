@@ -3,6 +3,9 @@ import kopf
 import logging
 import ssl
 import socket
+import kubernetes
+import base64
+import subprocess as sp
 
 from cryptography import x509
 from cryptography.x509.oid import ExtensionOID
@@ -25,12 +28,46 @@ def annotations_changed(name, spec, logger, namespace, annotations, **kwargs):
     #certi = getCertificate("wikipedia.org",443)
     lista = annotations['test']
     li = list(lista.split(","))
-    for server in li:     
+    for server in li:
       certi = getCertificate(server,443)
+      logging.info(certi.not_valid_after)
       sendCertificateToFile("tmp.txt",certi)
       #print(certi)
       certvar = open("tmp.txt", "r").read()
       logging.info(certvar)
+      #certvar = bytes(certvar, 'ascii')
+      stringcerti= sp.getoutput('cat tmp.txt | base64 -w0')
+      logging.info(stringcerti)
+      cm={
+
+          "cert": stringcerti
+
+      }
+      expiry={
+              "valid_to": certi.not_valid_after
+      }
+      api = kubernetes.client.CoreV1Api()
+      body = kubernetes.client.V1Secret(
+        metadata=kubernetes.client.V1ObjectMeta(name=server, annotations=expiry),
+        kind="Secret",
+        api_version="v1",
+        data=cm
+      )
+      #obj = api.create_namespaced_secret(
+      #    namespace=namespace,
+      #    body=body
+      #)
+      try:
+        #api_response = api_instance.create_namespaced_secret(namespace, body, pretty=pretty, dry_run=dry_run, field_manager=field_manager, field_validation=field_validation)
+        api_response = api.create_namespaced_secret(
+          namespace=namespace,
+          body=body
+        )
+        print(api_response)
+        logging.info(api_response)
+      except:
+        #print("Exception when calling CoreV1Api->create_namespaced_secret: %s\n" % e)
+        logging.info("error al crear secreto")
 
 
 def getCertificate(__hostname: str, __port: int) -> x509.Certificate:
